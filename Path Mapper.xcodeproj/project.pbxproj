@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		81E1C6942005A4620026546E /* SqueezeNet.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 81E1C6932005A4620026546E /* SqueezeNet.mlmodel */; };
 		81EF5B312004519F00A809E2 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81EF5B302004519F00A809E2 /* AppDelegate.swift */; };
 		81EF5B332004519F00A809E2 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81EF5B322004519F00A809E2 /* ViewController.swift */; };
 		81EF5B362004519F00A809E2 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81EF5B342004519F00A809E2 /* Main.storyboard */; };
@@ -34,6 +35,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		81E1C6932005A4620026546E /* SqueezeNet.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = SqueezeNet.mlmodel; sourceTree = "<group>"; };
 		81EF5B2D2004519F00A809E2 /* Path Mapper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Path Mapper.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		81EF5B302004519F00A809E2 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		81EF5B322004519F00A809E2 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -74,6 +76,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		81E1C6922005A4620026546E /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				81E1C6932005A4620026546E /* SqueezeNet.mlmodel */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		81EF5B242004519E00A809E2 = {
 			isa = PBXGroup;
 			children = (
@@ -101,6 +111,7 @@
 				81EF5B322004519F00A809E2 /* ViewController.swift */,
 				81EF5B342004519F00A809E2 /* Main.storyboard */,
 				81EF5B372004519F00A809E2 /* Assets.xcassets */,
+				81E1C6922005A4620026546E /* Resources */,
 				81EF5B392004519F00A809E2 /* LaunchScreen.storyboard */,
 				81EF5B3C2004519F00A809E2 /* Info.plist */,
 			);
@@ -260,6 +271,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				81EF5B332004519F00A809E2 /* ViewController.swift in Sources */,
+				81E1C6942005A4620026546E /* SqueezeNet.mlmodel in Sources */,
 				81EF5B312004519F00A809E2 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

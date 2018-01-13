@@ -15,9 +15,17 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     var cameraView: UIView!
     override func viewDidLoad() {
         super.viewDidLoad()
-        cameraView = UIView(frame: CGRect(x: 0, y: 0, width: self.view.frame.size.width, height: self.view.frame.size.height))
+        let session = AVCaptureSession()
+        session.sessionPreset = .high
+        vidPrevLayer = AVCaptureVideoPreviewLayer(session: session)
+        cameraView = UIView()
+    }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        cameraView = UIView(frame: CGRect(x: UIApplication.shared.keyWindow!.safeAreaInsets.left, y: UIApplication.shared.keyWindow!.safeAreaInsets.top, width: self.view.frame.size.width, height: self.view.frame.size.height - UIApplication.shared.keyWindow!.safeAreaInsets.top - UIApplication.shared.keyWindow!.safeAreaInsets.bottom))
         self.view.addSubview(cameraView)
         let session = AVCaptureSession()
+        vidPrevLayer = AVCaptureVideoPreviewLayer(session: session)
         let queue = DispatchQueue(label:"Image Queue")
         if let cam = AVCaptureDevice.default(for: .video) {
             session.sessionPreset = .medium
@@ -40,12 +48,20 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         } else {
             print("ERROR: No Video Camera Found.")
         }
+        
     }
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        vidPrevLayer.frame = cameraView.bounds;
+    }
+    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
     }
-
+    
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+    }
 
 }
 

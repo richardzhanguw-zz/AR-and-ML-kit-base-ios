@@ -13,13 +13,22 @@ import Vision
 class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
     var vidPrevLayer:AVCaptureVideoPreviewLayer!
     var cameraView: UIView!
+    var requests = [VNRequest] ()
+
     override func viewDidLoad() {
         super.viewDidLoad()
+        guard let model = try? VNCoreMLModel(for: SqueezeNet().model) else {
+            print("model is not loading")
+            fatalError()
+        }
+        let request = VNCoreMLRequest(model: model, completionHandler: handleRequests)
+        requests = [request]
         let session = AVCaptureSession()
         session.sessionPreset = .high
         vidPrevLayer = AVCaptureVideoPreviewLayer(session: session)
         cameraView = UIView()
     }
+    
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         cameraView = UIView(frame: CGRect(x: UIApplication.shared.keyWindow!.safeAreaInsets.left, y: UIApplication.shared.keyWindow!.safeAreaInsets.top, width: self.view.frame.size.width, height: self.view.frame.size.height - UIApplication.shared.keyWindow!.safeAreaInsets.top - UIApplication.shared.keyWindow!.safeAreaInsets.bottom))
@@ -44,25 +53,46 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
             } catch {
                 print("Camera Error")
             }
-            
         } else {
             print("ERROR: No Video Camera Found.")
         }
         
     }
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        
         vidPrevLayer.frame = cameraView.bounds;
     }
     
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+            return
+        }
+        var options:[VNImageOption: Any] = [:]
+        if let cameraIntrinsicData = CMGetAttachment(sampleBuffer, kCMSampleBufferAttachmentKey_CameraIntrinsicMatrix, nil) {
+            options = [.cameraIntrinsics: cameraIntrinsicData]
+        }
+        let imgReqHandler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .upMirrored, options: options)
+        do {
+            try imgReqHandler.perform(self.requests)
+        } catch {
+            print(error)
+        }
     }
     
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+    func handleRequests(request: VNRequest , error: Error?) {
+        if let currentError = error {
+            print(currentError.localizedDescription)
+            return
+        }
+        guard let observations = request.results else {
+            print("nothing has been received from the model")
+            return
+        }
+        let observation = observations [0] as! VNClassificationObservation
+        let result = "\(observation.identifier)"
+        print(result)
     }
-
 }
 
 

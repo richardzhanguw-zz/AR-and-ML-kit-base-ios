@@ -14,18 +14,14 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     var vidPrevLayer:AVCaptureVideoPreviewLayer!
     var cameraView: UIView!
     var requests = [VNRequest] ()
-
+    var session: AVCaptureSession!
     override func viewDidLoad() {
         super.viewDidLoad()
         guard let model = try? VNCoreMLModel(for: SqueezeNet().model) else {
             print("model is not loading")
             fatalError()
         }
-        let request = VNCoreMLRequest(model: model, completionHandler: handleRequests)
-        requests = [request]
-        let session = AVCaptureSession()
-        session.sessionPreset = .high
-        vidPrevLayer = AVCaptureVideoPreviewLayer(session: session)
+        requests = [VNCoreMLRequest(model: model, completionHandler: handleRequests)]
         cameraView = UIView()
     }
     
@@ -33,8 +29,9 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         super.viewDidAppear(animated)
         cameraView = UIView(frame: CGRect(x: UIApplication.shared.keyWindow!.safeAreaInsets.left, y: UIApplication.shared.keyWindow!.safeAreaInsets.top, width: self.view.frame.size.width, height: self.view.frame.size.height - UIApplication.shared.keyWindow!.safeAreaInsets.top - UIApplication.shared.keyWindow!.safeAreaInsets.bottom))
         self.view.addSubview(cameraView)
-        let session = AVCaptureSession()
+        session = AVCaptureSession()
         vidPrevLayer = AVCaptureVideoPreviewLayer(session: session)
+        vidPrevLayer.frame = cameraView.bounds;
         let queue = DispatchQueue(label:"Image Queue")
         if let cam = AVCaptureDevice.default(for: .video) {
             session.sessionPreset = .medium
@@ -61,7 +58,11 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        vidPrevLayer.frame = cameraView.bounds;
+    }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        session.stopRunning()
     }
     
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {

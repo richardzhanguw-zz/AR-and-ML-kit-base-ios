@@ -7,93 +7,100 @@
 //
 
 import UIKit
-import AVFoundation
+import ARKit
+import SceneKit
 import Vision
 
-class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
-    var vidPrevLayer:AVCaptureVideoPreviewLayer!
-    var cameraView: UIView!
-    var requests = [VNRequest] ()
-    var session: AVCaptureSession!
+class ViewController: UIViewController, ARSCNViewDelegate {
+    
+    var arView: ARSCNView!
+    var requests = [VNRequest]()
+    var mostRecentLocation : String = "none"
+    
+    let customDispatchQueue = DispatchQueue(label: "Custom Dispatch Queue")
+    let arSceneConfig = ARWorldTrackingConfiguration()
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        guard let model = try? VNCoreMLModel(for: SqueezeNet().model) else {
-            print("model is not loading")
-            fatalError()
+        arView = ARSCNView(frame: CGRect(x: 0, y: self.view.safeAreaInsets.top, width: self.view.frame.width, height: self.view.frame.height - self.view.safeAreaInsets.top - self.view.safeAreaInsets.bottom))
+        self.view.addSubview(arView)
+        arView.delegate = self
+        arView.scene = SCNScene()
+        arSceneConfig.planeDetection = .horizontal
+        guard let mlModel = try? VNCoreMLModel(for: SqueezeNet().model) else {
+            fatalError("Model does not exist")
         }
-        requests = [VNCoreMLRequest(model: model, completionHandler: handleRequests)]
-        cameraView = UIView()
+        let request = VNCoreMLRequest(model: mlModel, completionHandler: coreMLcompletionHandler)
+        request.imageCropAndScaleOption = VNImageCropAndScaleOption.centerCrop
+        requests = [request]
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: {
+            let worldCoord : SCNVector3 = SCNVector3Make(0.0 ,0.0, -0.2)
+            let node : SCNNode = self.createLocationNode(withLocationName: self.mostRecentLocation)
+            self.arView.scene.rootNode.addChildNode(node)
+            node.position = worldCoord
+        })
+        refreshScreen()
     }
     
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        cameraView = UIView(frame: CGRect(x: UIApplication.shared.keyWindow!.safeAreaInsets.left, y: UIApplication.shared.keyWindow!.safeAreaInsets.top, width: self.view.frame.size.width, height: self.view.frame.size.height - UIApplication.shared.keyWindow!.safeAreaInsets.top - UIApplication.shared.keyWindow!.safeAreaInsets.bottom))
-        self.view.addSubview(cameraView)
-        session = AVCaptureSession()
-        vidPrevLayer = AVCaptureVideoPreviewLayer(session: session)
-        vidPrevLayer.frame = cameraView.bounds;
-        let queue = DispatchQueue(label:"Image Queue")
-        if let cam = AVCaptureDevice.default(for: .video) {
-            session.sessionPreset = .medium
-            cameraView.layer.addSublayer(vidPrevLayer)
-            do{
-                let camInput = try AVCaptureDeviceInput(device: cam)
-                let vidOutput = AVCaptureVideoDataOutput()
-                vidOutput.alwaysDiscardsLateVideoFrames = true
-                vidOutput.setSampleBufferDelegate(self, queue: queue)
-                vidOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
-                session.addInput(camInput)
-                session.addOutput(vidOutput)
-                let connection = vidOutput.connection(with: .video)
-                connection?.videoOrientation = .portrait
-                session.startRunning()
-            } catch {
-                print("Camera Error")
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        arView.session.run(arSceneConfig)
+    }
+    
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        arView.session.pause()
+    }
+
+    func refreshScreen() {
+        customDispatchQueue.async {
+            self.refreshScreen()
+            let pixelBuffer : CVPixelBuffer? = (self.arView.session.currentFrame?.capturedImage)
+            let ciImage = pixelBuffer == nil ? nil : CIImage(cvPixelBuffer: pixelBuffer!)
+            let imgReqHandler = ciImage == nil ? nil : VNImageRequestHandler(ciImage: ciImage!, options: [:])
+            if let reqHandler = imgReqHandler{
+                do {
+                    try reqHandler.perform(self.requests)
+                } catch {
+                    print(error)
+                }
+            }
+        }
+    }
+    
+    func createLocationNode(withLocationName locationName : String) -> SCNNode {
+        let depth = CGFloat(0.02)
+        let text = SCNText(string: locationName, extrusionDepth: depth)
+        let wrapperBubbleNode = SCNNode()
+        text.chamferRadius = CGFloat(0.02)
+        text.alignmentMode = kCAAlignmentCenter
+        text.font = UIFont(name: "Courier-Bold", size: 0.1)
+        let textNode = SCNNode(geometry: text)
+        textNode.scale = SCNVector3Make(0.1, 0.1, 0.1)
+        textNode.pivot = SCNMatrix4MakeTranslation( (text.boundingBox.max.x - text.boundingBox.min.x)/2, text.boundingBox.min.y, Float(depth))
+        wrapperBubbleNode.addChildNode(textNode)
+        return wrapperBubbleNode
+    }
+
+    func coreMLcompletionHandler(request: VNRequest, error: Error?) {
+        let classification = request.results == nil ? nil : request.results![0] as? VNClassificationObservation
+        if let classification = classification {
+            DispatchQueue.main.async {
+                let firstGuess = classification.identifier.components(separatedBy: ",")
+                self.mostRecentLocation = firstGuess[0]
             }
         } else {
-            print("ERROR: No Video Camera Found.")
+            if let errorThrown = error {
+                fatalError(errorThrown.localizedDescription)
+            }
         }
+    }
+    
+    func renderer(_ renderer: SCNSceneRenderer, updateAtTime time: TimeInterval) {
         
     }
-    
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-    }
-    
-    override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidDisappear(animated)
-        session.stopRunning()
-    }
-    
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
-            return
-        }
-        var options:[VNImageOption: Any] = [:]
-        if let cameraIntrinsicData = CMGetAttachment(sampleBuffer, kCMSampleBufferAttachmentKey_CameraIntrinsicMatrix, nil) {
-            options = [.cameraIntrinsics: cameraIntrinsicData]
-        }
-        let imgReqHandler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .upMirrored, options: options)
-        do {
-            try imgReqHandler.perform(self.requests)
-        } catch {
-            print(error)
-        }
-    }
-    
-    func handleRequests(request: VNRequest , error: Error?) {
-        if let currentError = error {
-            print(currentError.localizedDescription)
-            return
-        }
-        guard let observations = request.results else {
-            print("nothing has been received from the model")
-            return
-        }
-        let observation = observations [0] as! VNClassificationObservation
-        let result = "\(observation.identifier)"
-        print(result)
-    }
 }
+
 
 

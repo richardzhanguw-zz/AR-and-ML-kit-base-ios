@@ -27,7 +27,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         arView.delegate = self
         arView.scene = SCNScene()
         arSceneConfig.planeDetection = .horizontal
-        guard let mlModel = try? VNCoreMLModel(for: SqueezeNet().model) else {
+        guard let mlModel = try? VNCoreMLModel(for: Resnet50().model) else {
             fatalError("Model does not exist")
         }
         let request = VNCoreMLRequest(model: mlModel, completionHandler: coreMLcompletionHandler)

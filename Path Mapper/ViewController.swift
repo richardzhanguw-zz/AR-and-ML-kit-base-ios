@@ -23,6 +23,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         arView = ARSCNView(frame: CGRect(x: 0, y: self.view.safeAreaInsets.top, width: self.view.frame.width, height: self.view.frame.height - self.view.safeAreaInsets.top - self.view.safeAreaInsets.bottom))
+        self.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         self.view.addSubview(arView)
         arView.delegate = self
         arView.scene = SCNScene()
@@ -33,7 +34,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         let request = VNCoreMLRequest(model: mlModel, completionHandler: coreMLcompletionHandler)
         request.imageCropAndScaleOption = VNImageCropAndScaleOption.centerCrop
         requests = [request]
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0, execute: {
             let worldCoord : SCNVector3 = SCNVector3Make(0.0 ,0.0, -0.2)
             let node : SCNNode = self.createLocationNode(withLocationName: self.mostRecentLocation)
             self.arView.scene.rootNode.addChildNode(node)
@@ -42,6 +43,14 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         refreshScreen()
     }
     
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator)
+    {
+        super.viewWillTransition(to: size, with: coordinator)
+        coordinator.animate(alongsideTransition: nil) { _ in
+            let frame = CGRect(x: self.view.safeAreaInsets.left, y: self.view.safeAreaInsets.top, width: self.view.bounds.width, height: self.view.bounds.height)
+            self.arView.frame = frame
+        }
+    }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         arView.session.run(arSceneConfig)
